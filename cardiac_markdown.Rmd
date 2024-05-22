@@ -1,5 +1,16 @@
-# DR. RUGURU data
+---
+title: "CARDIAC"
+output: html_document
+---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## CARDIAC STEP COUNT PLOTS
+
+
+```{r}
 library('rio') # import
 library('janitor') # cleaning column names
 library('ggplot2') # visualization
@@ -10,6 +21,7 @@ cr <- import('CardiacRehabilitatio-Functionalcapacitype_DATA_LABELS_2024-02-08_1
 
 cr <- clean_names(cr)
 names(cr)
+```
 
 # Objective
 # 1. Compare Week 1's target, what the device recorded and what the participant reported.
@@ -20,27 +32,28 @@ names(cr)
 
 # First obtain the participants asked to exercise
 # get rows 1:93, those who were asked to exercise
+##exercise <- cr[1:93, ]
 
+```{r}
 exercise <- cr[1:93, ]
 
 exercise_hbcr <- exercise[grepl("HBCR", exercise$event_name), ]
-
 # WEEK 1 STEP COUNT COMPARISON
 week_1 <- exercise_hbcr[c("wk_1_step_count_target","wk_1_step_count_achieved_device")]
 
-# merge study IDs to steps device
+# merge study IDs to steps device+
 id <- exercise_hbcr[,1:2]
 # bind week 1 with study id
 week_1_df <- cbind(id, week_1)
 
-
-
 ## dropping study ID 5, value appears to be an outlier
 week_1_df <- week_1_df[-1, ]
 rownames(week_1_df) <- NULL
+```
 
+## Plots
 
-
+```{r pressure, echo=FALSE}
 ## Plot week 1 comparison: Target vs Achieved
 # Pivoted the data frame to a long format
 long_week_1 <- week_1_df %>% 
@@ -49,8 +62,6 @@ long_week_1 <- week_1_df %>%
     names_to = 'study_weeks',
     values_to = 'steps_taken'
   )
-
-
 # change study_id column to character
 # So that y axis isn't a continuous variable
 long_week_1$study_id <- as.character(long_week_1$study_id)
@@ -63,20 +74,9 @@ long_week_1 %>%
   labs(x = "Step_Counts", y = "Study IDs", title = "Week 1 Step Count Target vs Achieved")+
   theme_minimal()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
 ## Those told not to monitor
+```{r}
 
 exercise <- cr[94:225, ] # those who were told not to monitor steps
 # 2nd, obtain the Arm: Home Based row
@@ -93,14 +93,12 @@ id <- exercise_hbcr[,1:2]
 # bind week 1 with study id
 week_1_df <- cbind(id, week_1)
 
-
-
 ## dropping study ID 5, value appears to be an outlier
 # week_1_df <- week_1_df[-1, ]
 rownames(week_1_df) <- NULL
+```
 
-## in this case, we did not have study id 5
-
+```{r pressure, echo=FALSE}
 ## Plot week 1 comparison vs followup
 # Pivoted the data frame to a long format
 long_week_1 <- week_1_df %>% 
@@ -123,20 +121,11 @@ long_week_1 %>%
   labs(x = "Step_Counts", y = "Study IDs", title = "Week 1 Step Count  vs Week 2")+
   theme_minimal()
 
-
-
-
-
-
-
-
-
-
-
-
-
+```
 
 # Objective 2
+
+```{r}
 # Trends Over the weeks
 steps <- cr[, grepl("Step count", names(cr))]
 steps_device <- cr[, grepl("device", names(cr))]
@@ -158,7 +147,6 @@ names(study_steps_device)
 
 
 ## those told to monitor
-
 # get rows 1:93, those who were asked to exercise
 e_study_steps_device <- study_steps_device[1:93, ]
 
@@ -171,9 +159,10 @@ study_hbcr <- study_hbcr[,-2]
 rownames(study_hbcr) <- NULL
 
 names(study_hbcr)
+```
 
-
-
+# visualize
+```{r pressure, echo=FALSE}
 ### Visualization
 
 long_hbcr <- study_hbcr %>%
@@ -211,3 +200,76 @@ long_hbcr_poltly <- long_hbcr %>%
 
 plot_ids <- ggplotly(long_hbcr_poltly)
 plot_ids
+```
+
+
+```{r}
+
+not_exercise <- cr[94:225, ] # those who were told not to monitor steps
+# 2nd, obtain the Arm: Home Based row
+not_exercise_hbcr <- not_exercise[grepl("HBCR", not_exercise$event_name), ]
+# 
+
+steps_phone <- not_exercise_hbcr[, grepl("phone", names(not_exercise_hbcr))]
+
+# # merge study IDs to steps phone
+not_e_id <- not_exercise_hbcr[,1:2]
+
+# # bind study id with steps phone
+not_e_study_steps_phone <- cbind( not_e_id, steps_phone)
+
+rownames(not_e_study_steps_phone) <- NULL
+# drop 2nd column
+not_e_study_steps_phone <- not_e_study_steps_phone[,-2]
+
+##
+# New column names
+not_e_names <- c("study_id","1","2","3","4","5","6","7","8","9","10","11","12")
+# Assign new column names
+names(not_e_study_steps_phone) <- not_e_names
+
+
+```
+
+```{r pressure, echo=FALSE}
+### Visualization
+# those told not to exercise
+
+not_e_long_hbcr <- not_e_study_steps_phone %>%
+  pivot_longer(
+    cols = 2:13,
+    names_to = "weeks",
+    values_to = "step_taken"
+  )
+
+# change weeks to time format
+# -change to numeric
+
+class(not_e_long_hbcr$weeks)
+not_e_long_hbcr$weeks <- as.numeric(not_e_long_hbcr$weeks)
+
+not_e_long_hbcr$study_id <- as.character(not_e_long_hbcr$study_id)
+
+
+
+reference_date <- as.Date("2024-01-01")
+not_e_long_hbcr$weeks <- as.Date( reference_date + (not_e_long_hbcr$weeks *7))
+
+
+
+# ggplotly
+library("plotly")
+# line plot
+not_e_long_hbcr_poltly <- not_e_long_hbcr %>% 
+  ggplot(aes(x=weeks, y= step_taken, color=study_id))+
+  geom_point()+
+  geom_line()
+  # scale_x_discrete(labels = c('week 1','week 2', 'week 3', 'week 4', 'week 5',
+  #                             'week 6', 'week 7', 'week 8', 'week 9', 'week 10',
+  #                             'week 11', 'week 12'))
+
+not_e_plot_ids <- ggplotly(not_e_long_hbcr_poltly)
+not_e_plot_ids
+```
+
+
