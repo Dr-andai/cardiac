@@ -16,6 +16,9 @@ library('janitor') # cleaning column names
 library('ggplot2') # visualization
 library('tidyverse') # data management
 library('dplyr')  # data management
+library(plotly)
+library(ggthemes)
+library(rstatix)
 
 cr <- import('CardiacRehabilitatio-Functionalcapacitype_DATA_LABELS_2024-02-08_1528 (1).csv')
 
@@ -36,8 +39,8 @@ names(cr)
 
 ```{r}
 exercise <- cr[1:93, ]
-
 exercise_hbcr <- exercise[grepl("HBCR", exercise$event_name), ]
+
 # WEEK 1 STEP COUNT COMPARISON
 week_1 <- exercise_hbcr[c("wk_1_step_count_target","wk_1_step_count_achieved_device")]
 
@@ -74,34 +77,40 @@ long_week_1 %>%
   labs(x = "Step_Counts", y = "Study IDs", title = "Week 1 Step Count Target vs Achieved")+
   theme_minimal()
 
+## SD $ Variance
+week_1_df$difference <- week_1_df$wk_1_step_count_target - week_1_df$wk_1_step_count_achieved_device
+sd_week_1 <- sd(week_1_df$difference, na.rm = TRUE)
+var_week_1 <- var(week_1_df$difference, na.rm = TRUE)
+print(sd_week_1)
+
 ```
 ## Those told not to monitor
 ```{r}
 
-exercise <- cr[94:225, ] # those who were told not to monitor steps
+exercise_not <- cr[94:225, ] # those who were told not to monitor steps
 # 2nd, obtain the Arm: Home Based row
-exercise_hbcr <- exercise[grepl("HBCR", exercise$event_name), ]
+exercise_not_hbcr <- exercise_not[grepl("HBCR", exercise_not$event_name), ]
 
 # column names
-names(exercise_hbcr)
+names(exercise_not_hbcr)
 # not to monitor
-week_1 <- exercise_hbcr[c("wk_1_step_count_achieved_participant_report_via_phone","step_count_achieved_participant_report_via_phone")]
+e_not_week_1 <- exercise_not_hbcr[c("wk_1_step_count_achieved_participant_report_via_phone","step_count_achieved_participant_report_via_phone")]
 
 
 # merge study IDs to steps device
-id <- exercise_hbcr[,1:2]
+id <- exercise_not_hbcr[,1:2]
 # bind week 1 with study id
-week_1_df <- cbind(id, week_1)
+e_not_week_1_df <- cbind(id, e_not_week_1)
 
 ## dropping study ID 5, value appears to be an outlier
 # week_1_df <- week_1_df[-1, ]
-rownames(week_1_df) <- NULL
+rownames(e_not_week_1_df) <- NULL
 ```
 
 ```{r pressure, echo=FALSE}
 ## Plot week 1 comparison vs followup
 # Pivoted the data frame to a long format
-long_week_1 <- week_1_df %>% 
+e_not_long_week_1 <- e_not_week_1_df %>% 
   pivot_longer(
     cols = c("wk_1_step_count_achieved_participant_report_via_phone","step_count_achieved_participant_report_via_phone"),
     names_to = 'study_weeks',
@@ -111,15 +120,24 @@ long_week_1 <- week_1_df %>%
 
 # change study_id column to character
 # So that y axis isn't a continuous variable
-long_week_1$study_id <- as.character(long_week_1$study_id)
+e_not_long_week_1$study_id <- as.character(e_not_long_week_1$study_id)
 
 # visualize the plot
-long_week_1 %>% 
+e_not_long_week_1 %>% 
   ggplot(aes(x=steps_taken, y=study_id, group= study_id, color=study_weeks))+
   geom_line()+
   geom_point()+
   labs(x = "Step_Counts", y = "Study IDs", title = "Week 1 Step Count  vs Week 2")+
   theme_minimal()
+
+
+names(e_not_week_1_df)
+## SD $ Variance
+e_not_week_1_df$difference <- e_not_week_1_df$wk_1_step_count_achieved_participant_report_via_phone - e_not_week_1_df$step_count_achieved_participant_report_via_phone
+
+sd_week_1 <- sd(e_not_week_1_df$difference, na.rm = TRUE)
+var_week_1 <- var(week_1_df$difference, na.rm = TRUE)
+print(sd_week_1)
 
 ```
 
@@ -162,9 +180,9 @@ names(study_hbcr)
 ```
 
 # visualize
-```{r pressure, echo=FALSE}
+```{r}
 ### Visualization
-
+study_hbcr$study_id <- as.character(study_hbcr$study_id)
 long_hbcr <- study_hbcr %>%
   pivot_longer(
     cols = 2:13,
@@ -182,25 +200,129 @@ long_hbcr$study_id <- as.character(long_hbcr$study_id)
 
 
 
-reference_date <- as.Date("2024-01-01")
-long_hbcr$weeks <- as.Date( reference_date + (long_hbcr$weeks *7))
+reference_date <- as.Date(("2024-01-01"), by = "week", length.out = 12)
+# long_hbcr$weeks <- as.Date( reference_date + (long_hbcr$weeks *7))
+
+#long_hbcr$weeks <- as.Date(long_hbcr$weeks)
 
 
+# Function to create week labels
+week_labels <- function(dates) {
+  week_numbers <- seq_along(dates)
+  paste("weeks", week_numbers)
+}
 
-# ggplotly
-library("plotly")
 # line plot
 long_hbcr_poltly <- long_hbcr %>% 
   ggplot(aes(x=weeks, y= step_taken, color=study_id))+
   geom_point()+
-  geom_line()
-  # scale_x_discrete(labels = c('week 1','week 2', 'week 3', 'week 4', 'week 5',
-  #                             'week 6', 'week 7', 'week 8', 'week 9', 'week 10',
-  #                             'week 11', 'week 12'))
-
+  geom_line()+
+  labs(title="Trends of steps taken by those told to Monitor")+
+  scale_x_continuous(labels = scales::number_format(accuracy = 1))+
+  theme_few()+
+  theme(legend.position = "none")
 plot_ids <- ggplotly(long_hbcr_poltly)
 plot_ids
+
+get_summary_stats(study_hbcr)
 ```
+
+#Step count target
+```{r}
+steps_target <- cr[, grepl("step_count_target", names(cr))]
+
+# merge study IDs to steps device
+study_id <- cr[,1:2]
+
+## clean column names
+names(steps_target) <- NULL
+# New column names
+names <- c("1","2","3","4","5","6","7","8","9","10","11","12")
+# Assign new column names
+names(steps_target) <- names
+
+
+study_steps_target <- cbind( study_id, steps_target)
+names(study_steps_target)
+
+
+
+## those told to monitor
+# get rows 1:93, those who were asked to exercise
+e_study_steps_target <- study_steps_target[1:93, ]
+
+
+# get HBCR row
+target_study_hbcr <- e_study_steps_target[grepl("HBCR", e_study_steps_target$event_name), ]
+
+# drop 2nd column
+target_study_hbcr <- target_study_hbcr[,-2]
+rownames(target_study_hbcr) <- NULL
+
+names(study_hbcr)
+```
+
+```{r}
+### Visualization
+target_study_hbcr$study_id <- as.character(target_study_hbcr$study_id)
+target_long_hbcr <- target_study_hbcr %>%
+  pivot_longer(
+    cols = 2:13,
+    names_to = "weeks",
+    values_to = "step_taken"
+  )
+
+# change weeks to time format
+# -change to numeric
+
+class(target_long_hbcr$weeks)
+target_long_hbcr$weeks <- as.numeric(target_long_hbcr$weeks)
+
+long_hbcr$study_id <- as.character(long_hbcr$study_id)
+
+
+
+# Function to create week labels
+week_labels <- function(dates) {
+  week_numbers <- seq_along(dates)
+  paste("weeks", week_numbers)
+}
+
+# line plot
+target_long_hbcr_poltly <- target_long_hbcr %>% 
+  ggplot(aes(x=weeks, y= step_taken, color=study_id))+
+  geom_point()+
+  geom_line()+
+  labs(title="Trends of Target steps by those told to Monitor")+
+  scale_x_continuous(labels = scales::number_format(accuracy = 1))+
+  theme_few()+
+  theme(legend.position = "none")
+plot_ids <- ggplotly(target_long_hbcr_poltly)
+plot_ids
+
+get_summary_stats(study_hbcr)
+```
+
+
+
+```{r}
+value1 <- target_long_hbcr$step_taken
+value2 <- not_e_long_hbcr$step_taken
+
+result <- t.test(value1, value2, paired = TRUE)
+print(result)
+# Print detailed results
+cat("t-statistic:", result$statistic, "\n")
+cat("Degrees of freedom:", result$parameter, "\n")
+cat("p-value:", result$p.value, "\n")
+cat("Confidence interval:", result$conf.int, "\n")
+cat("Mean of the differences:", result$estimate, "\n")
+
+```
+
+
+
+
 
 
 ```{r}
@@ -231,9 +353,14 @@ names(not_e_study_steps_phone) <- not_e_names
 
 ```
 
-```{r pressure, echo=FALSE}
+```{r}
 ### Visualization
 # those told not to exercise
+not_e_study_steps_phone$study_id <- as.character(not_e_study_steps_phone$study_id)
+
+## getting 31 obs
+num_rows <-nrow(not_e_study_steps_phone)
+not_e_study_steps_phone <- not_e_study_steps_phone[1:(num_rows-13), ]
 
 not_e_long_hbcr <- not_e_study_steps_phone %>%
   pivot_longer(
@@ -252,24 +379,27 @@ not_e_long_hbcr$study_id <- as.character(not_e_long_hbcr$study_id)
 
 
 
-reference_date <- as.Date("2024-01-01")
-not_e_long_hbcr$weeks <- as.Date( reference_date + (not_e_long_hbcr$weeks *7))
+reference_date <- as.Date(("2024-01-01"), by = "week", length.out = 12)
+#not_e_long_hbcr$weeks <- as.Date( reference_date + (not_e_long_hbcr$weeks *7))
 
 
 
-# ggplotly
-library("plotly")
+
 # line plot
 not_e_long_hbcr_poltly <- not_e_long_hbcr %>% 
   ggplot(aes(x=weeks, y= step_taken, color=study_id))+
   geom_point()+
-  geom_line()
-  # scale_x_discrete(labels = c('week 1','week 2', 'week 3', 'week 4', 'week 5',
-  #                             'week 6', 'week 7', 'week 8', 'week 9', 'week 10',
-  #                             'week 11', 'week 12'))
+  geom_line()+
+  labs(title="Trends of steps taken by those told NOT to Monitor")+
+  scale_x_continuous(labels = scales::number_format(accuracy = 1))+
+  theme_few()+
+  theme(legend.position = "none")
 
 not_e_plot_ids <- ggplotly(not_e_long_hbcr_poltly)
 not_e_plot_ids
+
+get_summary_stats(not_e_study_steps_phone)
+summary(not_e_study_steps_phone)
 ```
 
 
