@@ -17,8 +17,10 @@ library('ggplot2') # visualization
 library('tidyverse') # data management
 library('dplyr')  # data management
 library(plotly)
+library(viridis)
 library(ggthemes)
 library(rstatix)
+library(gghighlight)
 
 cr <- import('CardiacRehabilitatio-Functionalcapacitype_DATA_LABELS_2024-02-08_1528 (1).csv')
 
@@ -78,10 +80,10 @@ long_week_1 %>%
   theme_minimal()
 
 ## SD $ Variance
-week_1_df$difference <- week_1_df$wk_1_step_count_target - week_1_df$wk_1_step_count_achieved_device
-sd_week_1 <- sd(week_1_df$difference, na.rm = TRUE)
-var_week_1 <- var(week_1_df$difference, na.rm = TRUE)
-print(sd_week_1)
+# week_1_df$difference <- week_1_df$wk_1_step_count_target - week_1_df$wk_1_step_count_achieved_device
+# sd_week_1 <- sd(week_1_df$difference, na.rm = TRUE)
+# var_week_1 <- var(week_1_df$difference, na.rm = TRUE)
+# print(sd_week_1)
 
 ```
 ## Those told not to monitor
@@ -133,11 +135,11 @@ e_not_long_week_1 %>%
 
 names(e_not_week_1_df)
 ## SD $ Variance
-e_not_week_1_df$difference <- e_not_week_1_df$wk_1_step_count_achieved_participant_report_via_phone - e_not_week_1_df$step_count_achieved_participant_report_via_phone
-
-sd_week_1 <- sd(e_not_week_1_df$difference, na.rm = TRUE)
-var_week_1 <- var(week_1_df$difference, na.rm = TRUE)
-print(sd_week_1)
+# e_not_week_1_df$difference <- e_not_week_1_df$wk_1_step_count_achieved_participant_report_via_phone - e_not_week_1_df$step_count_achieved_participant_report_via_phone
+# 
+# sd_week_1 <- sd(e_not_week_1_df$difference, na.rm = TRUE)
+# var_week_1 <- var(week_1_df$difference, na.rm = TRUE)
+# print(sd_week_1)
 
 ```
 
@@ -183,6 +185,7 @@ names(study_hbcr)
 ```{r}
 ### Visualization
 study_hbcr$study_id <- as.character(study_hbcr$study_id)
+
 long_hbcr <- study_hbcr %>%
   pivot_longer(
     cols = 2:13,
@@ -200,31 +203,42 @@ long_hbcr$study_id <- as.character(long_hbcr$study_id)
 
 
 
-reference_date <- as.Date(("2024-01-01"), by = "week", length.out = 12)
+# reference_date <- as.Date(("2024-01-01"), by = "week", length.out = 12)
 # long_hbcr$weeks <- as.Date( reference_date + (long_hbcr$weeks *7))
 
 #long_hbcr$weeks <- as.Date(long_hbcr$weeks)
 
 
-# Function to create week labels
-week_labels <- function(dates) {
-  week_numbers <- seq_along(dates)
-  paste("weeks", week_numbers)
-}
+# # Function to create week labels
+# week_labels <- function(dates) {
+#   week_numbers <- seq_along(dates)
+#   paste("weeks", week_numbers)
+# }
 
 # line plot
 long_hbcr_poltly <- long_hbcr %>% 
   ggplot(aes(x=weeks, y= step_taken, color=study_id))+
   geom_point()+
   geom_line()+
-  labs(title="Trends of steps taken by those told to Monitor")+
+  scale_color_viridis(discrete = TRUE) +
+  labs(title="Trend of Recorded Steps Count",
+       subtitle = "Participant who monitored",
+       y="step count")+
   scale_x_continuous(labels = scales::number_format(accuracy = 1))+
   theme_few()+
-  theme(legend.position = "none")
+  theme(legend.position = "none")+
+  gghighlight(max(step_taken) > 70000, 
+              unhighlighted_params = list(linewidth = 0.3,
+                                          linetype = "dotted"),
+              use_direct_label = FALSE)
+
+
+long_hbcr_poltly
+
 plot_ids <- ggplotly(long_hbcr_poltly)
 plot_ids
 
-get_summary_stats(study_hbcr)
+# get_summary_stats(study_hbcr)
 ```
 
 #Step count target
@@ -282,25 +296,35 @@ long_hbcr$study_id <- as.character(long_hbcr$study_id)
 
 
 
-# Function to create week labels
-week_labels <- function(dates) {
-  week_numbers <- seq_along(dates)
-  paste("weeks", week_numbers)
-}
+# # Function to create week labels
+# week_labels <- function(dates) {
+#   week_numbers <- seq_along(dates)
+#   paste("weeks", week_numbers)
+# }
 
 # line plot
 target_long_hbcr_poltly <- target_long_hbcr %>% 
   ggplot(aes(x=weeks, y= step_taken, color=study_id))+
   geom_point()+
   geom_line()+
-  labs(title="Trends of Target steps by those told to Monitor")+
+  scale_color_viridis(discrete = TRUE) +
+  labs(title="Trends of Target Steps Count",
+       subtitle = "Participant who monitored",
+       y="step count")+
   scale_x_continuous(labels = scales::number_format(accuracy = 1))+
   theme_few()+
-  theme(legend.position = "none")
+  theme(legend.position = "none")+
+  gghighlight(max(step_taken) > 70000, 
+              unhighlighted_params = list(linewidth = 0.3,
+                                          linetype = "dotted"),
+              use_direct_label = FALSE)
+
+target_long_hbcr_poltly
+
 plot_ids <- ggplotly(target_long_hbcr_poltly)
 plot_ids
 
-get_summary_stats(study_hbcr)
+# get_summary_stats(study_hbcr)
 ```
 
 
@@ -359,8 +383,8 @@ names(not_e_study_steps_phone) <- not_e_names
 not_e_study_steps_phone$study_id <- as.character(not_e_study_steps_phone$study_id)
 
 ## getting 31 obs
-num_rows <-nrow(not_e_study_steps_phone)
-not_e_study_steps_phone <- not_e_study_steps_phone[1:(num_rows-13), ]
+# num_rows <-nrow(not_e_study_steps_phone)
+# not_e_study_steps_phone <- not_e_study_steps_phone[1:(num_rows-13), ]
 
 not_e_long_hbcr <- not_e_study_steps_phone %>%
   pivot_longer(
@@ -379,9 +403,8 @@ not_e_long_hbcr$study_id <- as.character(not_e_long_hbcr$study_id)
 
 
 
-reference_date <- as.Date(("2024-01-01"), by = "week", length.out = 12)
-#not_e_long_hbcr$weeks <- as.Date( reference_date + (not_e_long_hbcr$weeks *7))
-
+# reference_date <- as.Date(("2024-01-01"), by = "week", length.out = 12)
+# #not_e_long_hbcr$weeks <- as.Date( reference_date + (not_e_long_hbcr$weeks *7))
 
 
 
@@ -390,16 +413,27 @@ not_e_long_hbcr_poltly <- not_e_long_hbcr %>%
   ggplot(aes(x=weeks, y= step_taken, color=study_id))+
   geom_point()+
   geom_line()+
-  labs(title="Trends of steps taken by those told NOT to Monitor")+
+  scale_color_viridis(discrete = TRUE) +
+  labs(title="Trends of Target Steps Count",
+       subtitle = "Participant who did not monitor",
+       y="step count")+
   scale_x_continuous(labels = scales::number_format(accuracy = 1))+
+  scale_y_continuous(labels = scales::comma)+
   theme_few()+
-  theme(legend.position = "none")
+  theme(legend.position = "none")+
+  gghighlight(max(step_taken) > 70000, 
+              unhighlighted_params = list(linewidth = 0.3,
+                                          linetype = "dotted"),
+              use_direct_label = FALSE)
+
+
+not_e_long_hbcr_poltly
 
 not_e_plot_ids <- ggplotly(not_e_long_hbcr_poltly)
 not_e_plot_ids
 
-get_summary_stats(not_e_study_steps_phone)
-summary(not_e_study_steps_phone)
+# get_summary_stats(not_e_study_steps_phone)
+# summary(not_e_study_steps_phone)
 ```
 
 
